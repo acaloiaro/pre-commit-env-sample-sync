@@ -3,11 +3,6 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     systems.url = "github:nix-systems/default";
     devenv.url = "github:cachix/devenv";
-
-    gomod2nix = {
-      url = "github:nix-community/gomod2nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = {
@@ -15,7 +10,6 @@
     nixpkgs,
     devenv,
     systems,
-    gomod2nix,
     ...
   } @ inputs: let
     forEachSystem = nixpkgs.lib.genAttrs (import systems);
@@ -23,9 +17,7 @@
     packages = forEachSystem (system: let
       callPackage = nixpkgs.darwin.apple_sdk_11_0.callPackage or nixpkgs.legacyPackages.${system}.callPackage;
     in {
-      default = callPackage ./. {
-        inherit (gomod2nix.legacyPackages.${system}) buildGoApplication;
-      };
+      default = (callPackage ./default.nix {}).${system};
     });
 
     devShells = forEachSystem (system: let
@@ -38,22 +30,14 @@
             packages = with pkgs; [
               automake
               go_1_23
-              gomod2nix.legacyPackages.${system}.gomod2nix
               gotools
               golangci-lint
               go-tools
               gopls
+              nix-update
               pre-commit
               svu
             ];
-
-            pre-commit.hooks.gomod2nix = {
-              enable = true;
-              pass_filenames = false;
-              name = "gomod2nix";
-              description = "Run gomod2nix before commit";
-              entry = "${gomod2nix.legacyPackages.${system}.gomod2nix}/bin/gomod2nix";
-            };
           }
         ];
       };
